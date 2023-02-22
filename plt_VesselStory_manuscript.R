@@ -95,7 +95,7 @@ for (kk in 1:nrow(keep)){
 colnames(outputKeep) = (c(colnames(output4),"ShipLane") )
 outputKeep$Site = as.character(outputKeep$Site ) 
 
-# FIGURE 2 ####
+# FIGURE 1 ####
 ## AIS traffic size categories- (Figure 2- map pies)
 # AIS COMPOSITION ON MAP... for these months
 cData = merge(outputKeep, siteLoc, by.x = "Site")
@@ -154,7 +154,7 @@ p1 = ggplot() +
   theme(panel.grid.major = element_line(color = gray(.8), size = 0.2)) 
 p1
 
-# FIGURE 3 ####
+# FIGURE X ####
 # NOT USED
 ## Multiple metrics all sites-  bubble chart (Figure 3
 # AMOUNT VESSEL TRAFFIC: AIS detections vs Vessel detections
@@ -175,7 +175,7 @@ ggplot(outputKeep, aes(y = TotalVesselDet_cnt_mean, x = LOA_ALL_UV_mean) ) +
   theme( plot.title=element_text(size=18, face="bold"), 
          legend.position = "bottom")
 
-# FIGURE 4: EC vs DM ####
+# FIGURE 2: EC vs DM ####
 #now figure 2
 ## Multiple metrics all sites-  bubble chart (Figure 4)
 #order site by percent of day
@@ -205,8 +205,8 @@ ggplot(outputKeep, aes(y = PrpHRSVESS*100, x = NoiseAdd, color = ShipLane, label
          plot.caption  = element_text(color = "dark gray",  size = 10, face = "italic") )
 #copied to illustrator to edit legend etc
 
-# FIGURE X: GR and SB  (updated with 1-min code) ####
-## Category through the season... GR01, SB02 (Figure 4B)
+# FIGURE 4: GR and SB  (updated with 1-min code) ####
+## Category through the season... GR01, SB02 
 GR01 = output4[ output4$Site == "GR01" | output4$Site == "SB03", ]
 ggplot(GR01, aes(y=PrpHRSVESS*100, x=NoiseAdd, color = as.factor(Mth) ) ) +
   geom_point( aes(size = ALL_UV_sum ))+
@@ -220,7 +220,10 @@ ggplot(GR01, aes(y=PrpHRSVESS*100, x=NoiseAdd, color = as.factor(Mth) ) ) +
          plot.subtitle  = element_text(color = "dark gray", size = 10, face = "italic"),
          plot.caption  = element_text(color = "dark gray",  size = 10, face = "italic") )
 
-# FIGURE X: APRIL COVID ####
+## READ IN OUTPUT OF 1c_process_VesselDetections_TOL-1min ####
+
+
+# FIGURE 6: APRIL COVID ####
 ## Change in condition- by category (Figure 6)
 #  how did vessel presence and sound level change?
 
@@ -294,7 +297,7 @@ plot(p)
 # INTERPRETATION (not what I was thinking in terms of categories (ugh)
 # MB02-- increase dominance; FK02/CI01/SB02/SB03-- increase level
 
-# FIGURE X: daily ####
+# FIGURE 3: daily ####
 ## vessel dominance by hour
 
 #LABEL CATEGORIES
@@ -439,8 +442,6 @@ PHL4 = ggplot(data=iData[iData$site == "HI03",], aes( x = (Hour), y = mean) ) +
 # LH- difference across hours- continuous
 
 ggarrange(PHL4,PHH1,PLH3, PHH2)
-
-# !!!! CHECK ERROR BARS FOR SB03
 
 
 

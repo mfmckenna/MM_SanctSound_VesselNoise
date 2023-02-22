@@ -1,6 +1,8 @@
 # Matching the 1-min TOLs with vessel detections and AIS
 rm(list=ls())
-# Vessel manuscript processing GR01 and SB03- to show montly varition
+# Vessel manuscript processing GR01 and SB03- 
+
+## NOT USED-- COPIED TO 1c_Process_VesselDetection_TOL_min
 
 library(lubridate)
 library(ggplot2)
@@ -15,7 +17,7 @@ frqs = c("DateF", "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100",
 fQI = c( "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100", "TOL_125", "TOL_160", "TOL_200", "TOL_250", "TOL_315", "TOL_400", "TOL_500", "TOL_630", "TOL_800", 
          "TOL_1000", "TOL_1250", "TOL_1600", "TOL_2000", "TOL_2500", "TOL_3150", "TOL_4000", "TOL_5000", "TOL_6300", "TOL_8000", "TOL_10000", "TOL_12500", "TOL_16000", "TOL_20000")
 FQsave = "TOL_125"
-
+topDir =  "H:\\SanctSound\\data2\\"
 # SELECT DATA OF INTEREST ####
 yor = "2019"
 sites = c("SB03", "GR01")
@@ -26,8 +28,8 @@ for (ss in 1:length(sites)){
   site1 = sites[ss] 
   
   # DIRECTORIES ####
-  tDir   = paste0( "F:\\RESEARCH\\SanctSound\\data2\\", site1, "\\")
-  outDir = paste0( "F:\\RESEARCH\\SanctSound\\data2\\", site1, "\\")
+  tDir   = paste0( topDir, site1, "\\")
+  outDir = paste0( topDir, site1, "\\")
   DC = Sys.Date()
   
   # TOLs ####
@@ -83,7 +85,7 @@ for (ss in 1:length(sites)){
   VD = VD[ VD$yr == yor,] 
   
   # AIS data ####
-  AIStran = read.csv("F:\\RESEARCH\\SanctSound\\data2\\OC02\\smp_transit_data.csv")
+  AIStran = read.csv(paste0(topDir, "SB03\\smp_transit_data.csv")) 
   AIStranOC = AIStran[ AIStran$loc_id == site1,]
   AIStranOC$Start = as.POSIXct( gsub("[+]00", "", AIStranOC$start_time_utc), tz = "GMT" ) 
   AIStranOC$End   = as.POSIXct( gsub("[+]00", "", AIStranOC$end_time_utc), tz = "GMT" ) 
@@ -103,8 +105,10 @@ for (ss in 1:length(sites)){
     TOLmin$VD[idx] = ii
     
   }
+  
   # check: max(TOLmin$VD) - nrow(VD)
   
+ 
   # MATCH AIS transit with TOL minute data ####
   TOLmin$AIS = 0
   TOLmin$AISs = 0
@@ -125,22 +129,31 @@ for (ss in 1:length(sites)){
     if(is.na(AIStranOC$loa[ii]) )                        { TOLmin$AISu[idx] = TOLminu$AIS[idx] + 1  }
   }
   
+  #TOLmin = TOLmin[TOLmin$yr == 2019,] #unique(TOLmin$yr)
+  TOLmin$mth = month(TOLmin$DateF)
+  
+  ## ASSIGN VESSEL CATEGORIES ####
   TOLmin$Category[TOLmin$AIS > 0  & TOLmin$VD > 0 ] =    "A. Vessel- AIS nearby" 
-  TOLmin$Category[TOLmin$AIS == 0 & TOLmin$VD > 0 ] =  "B. Vessel- unk"
+  TOLmin$Category[TOLmin$AIS == 0 & TOLmin$VD > 0 ] =    "B. Vessel- unk"
   TOLmin$Category[TOLmin$AIS == 0 & TOLmin$VD == 0] =    "D. Ambient"
   TOLmin$Category[TOLmin$AIS > 0  & TOLmin$VD == 0] =    "C. Ambient- AIS nearby"
  
   TOLmin$Label[TOLmin$VD > 0 ] =    "A. Vessel Detection" 
-  TOLmin$Label[TOLmin$VD == 0 ] =    "B. Ambient"
-
-  ## summary plot ####
-  TOLmin$mth = month(TOLmin$DateF)
+  TOLmin$Label[TOLmin$VD == 0 ] =   "B. Ambient"
+ 
+  TOLmin$Slow = "No" 
+  TOLmin$Slow[TOLmin$mth == 3 | TOLmin$mth == 4  ] =    "Slowdown" 
+  aggregate(TOLmin$TOL_125, by=list(TOLmin$Slow,TOLmin$mth), mean, na.rm=T)
+  
+  
+  ## PLOT: TOL by category ####
   TOLmin2 = TOLmin[TOLmin$mth == 9,] #only plot first month
-  #TOLmin2 = TOLmin[1:400,] #only plot first month
+  TOLmin2 = TOLmin[1:400,] #only plot first month
   p = ggplot(TOLmin2, aes(x=DateF, y=Category, fill=(TOL_125)) ) +
     geom_tile() +
     scale_fill_distiller(palette = "YlGnBu") +
     theme_bw() + 
+    ggtitle("AIS Category")+
     scale_y_discrete(limits=rev)+ 
     xlab("")+  ylab("")+ 
     scale_color_gradientn(colours = viridis(20))+
@@ -149,27 +162,60 @@ for (ss in 1:length(sites)){
             plot.caption = element_text(size = 14) )
   
   ggplotly(p) 
+  p = ggplot(TOLmin2, aes(x=DateF, y=Label, fill=(TOL_125)) ) +
+    geom_tile() +
+    scale_fill_distiller(palette = "YlGnBu") +
+    theme_bw() + 
+    ggtitle("Vessel Detection Label")+
+    scale_y_discrete(limits=rev)+ 
+    xlab("")+  ylab("")+ 
+    scale_color_gradientn(colours = viridis(20))+
+    theme(  axis.text.y = element_text(size = 14, colour="black"),
+            axis.text.x=element_text(size = 14, colour="black"),
+            plot.caption = element_text(size = 14) )
+  ggplotly(p) 
   
+  # some averaging of data
   aggregate(TOLmin$TOL_125, by=list(TOLmin$Category,TOLmin$mth), median, na.rm=T)
   aggregate(TOLmin$TOL_125, by=list(TOLmin$Category), max, na.rm=T)
   aggregate(TOLmin$TOL_125, by=list(TOLmin$Label), median, na.rm=T)
+  cData = as.data.frame( TOLmin %>% group_by(Label, mth) %>% tally() )
+ 
+  ## FIGURE 6A: TOL by slowdown ####
+  #only vessel periods in 2019
+  TOLminAIS = TOLmin[TOLmin$Category == "A. Vessel- AIS nearby", ]
+  TOLminVD  = TOLmin[TOLmin$Label    == "A. Vessel Detection", ]
+  ggplot(TOLminAIS, aes(TOL_125, color = Slow) ) +
+    stat_ecdf(geom="point") +
+    ylab("f(sound level)") +  xlab(paste0("Low-frequency sound levels \n (125 Hz third-octave band)") ) +
+    theme_bw() +
+    theme(  text = element_text(size = 20,colour="black") , legend.position="bottom", legend.title = element_blank() )
   
+  ## FIGURE 6B: % time with vessel noise ####
+  #get % of minutes with AIS vessel noise present per month
+  mthTotal = as.data.frame( TOLmin %>% group_by(mth) %>% tally() )
+  TOLminVDt = as.data.frame( TOLminVD %>% group_by(mth) %>% tally() )
+  mthTotal$per = TOLminVDt$n/mthTotal$n
   
-  cData = as.data.frame( TOLmin %>% group_by(Category,mth) %>% tally() )
-  as.data.frame( TOLmin %>% group_by(mth) %>% tally() )
-  
-  
-  
-  #pie chart of vessel dominance in soundscape
-  slices = as.data.frame( TOLmin %>% group_by(mth, Category) %>% tally() )
+  slices = as.data.frame( TOLmin %>% group_by(mth,Label) %>% tally() )
   slices2= as.data.frame( slices %>%
-    group_by(mth) %>%
-    mutate(percent = n/sum(n)) )
+                            group_by(mth) %>%
+                            mutate(percent = n/sum(n)) )
+  ggplot(data=mthTotal, aes(x=as.factor(mth), y=per) ) +
+    geom_bar(stat = "identity", fill = c("#00BFC4","#00BFC4","#F8766D","#F8766D","#00BFC4","#00BFC4","#00BFC4","#00BFC4","#00BFC4","#00BFC4","#00BFC4","#00BFC4") )  +
+    xlab("")+  ylab("% of minutes with vessel noise") +
+    theme_bw() +
+    theme(  text = element_text(size = 20,colour="black") , legend.position="bottom", legend.title = element_blank() )
   
+  ## FIGURE 6C: SNR during different periods ####
 
   
-  ggplot(data=slices2, aes(x=as.factor(mth), y=percent, group=Category,fill=Category) )+
-    geom_bar(stat = "identity")
+  
+
+    
+    
+
+ 
 
   
 
