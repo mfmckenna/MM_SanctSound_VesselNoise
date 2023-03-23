@@ -1,4 +1,10 @@
 # PLOTS 
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(plotrix)
+library(viridis)
+
 
 rm(list=ls())
 inDir = "G:\\My Drive\\ActiveProjects\\SANCTSOUND\\combineFiles_VesselManuscript"
@@ -114,13 +120,27 @@ VNP2$Mth[VNP2$mth == 12] = "Dec"
 
 VNP2$Mth = factor( VNP2$Mth, levels =c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec") )
 
-ggplot(VNP2, aes(x = as.factor(Mth), perTime*100, color = SNRmax_mean) ) +
-  geom_point(size = VNP2$VDs01 )  + 
+
+ggplot(VNP2, aes(x = as.factor(Mth), perTime*100, color=SNRmax_mean, label = as.character( round_any(SNRmax_mean,.1) ) ) ) +
+  geom_point(size = VNP2$VDs01+5 )  +  # relative number of vessel detections per site
+  geom_text(hjust=.5, vjust=-2)+ #exceedence value
   scale_color_gradientn(colours = viridis(20))+
   theme_minimal()+
   xlab("")+  ylab("% of time with vessel noise") + ggtitle("") +
   labs(caption = "Bubble size = relative number of vessel detections", color = "Noise Exceedence" )+
   theme(  text = element_text(size =20) )
+
+VNP2$Mth = factor( VNP2$Mth, levels =c("Dec","Nov","Oct","Sep","Aug","Jul","Jun","May","Apr","Mar","Feb","Jan") )
+ggplot(VNP2, aes(y= as.factor(Mth), color= perTime*100, x=SNRmax_mean, label = round( perTime*100 ) ) )  +
+  geom_point(size = VNP2$VDs01+5 )  +  # relative number of vessel detections per site
+  geom_text(hjust=0, vjust=3)+ #exceedence value
+  #scale_colour_gradient(low = "gray", high = "black")+
+  scale_color_gradientn(colours = viridis (10))+
+  theme_minimal()+
+  xlab("")+  ylab("") + ggtitle("") +
+  labs(caption = "Bubble size = relative number of vessel detections", color = "% of time with vessel noise" )+
+  theme(  text = element_text(size =20) )
+
 
 # FIGURE 5: MANDATORY SLOWDOWN
 # head( TOL_SB03)
