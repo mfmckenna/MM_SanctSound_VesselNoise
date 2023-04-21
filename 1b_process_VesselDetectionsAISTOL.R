@@ -34,19 +34,19 @@ library(plotly)  #https://www.r-graph-gallery.com/interactive-charts.html
 ra = 7 #days for running average
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 stdize = function(x, ...) {(x - min(x, ...)) / (max(x, ...) - min(x, ...))}
-yearflag = 2020
+yearflag = 2019
 #range of dates for output graphics
 eDatePlot = '2021-12-31'
 sDatePlot = '2018-11-01'
 
 # OUTPUT details ####
-tDir = "F:\\RESEARCH\\SanctSound\\"
-outDir =  paste0(tDir,"data2\\combineFiles_VesselManuscript\\")
+tDir = "F:\\SanctSound\\"
+outDir =  paste0(tDir,"data2\\combineFiles_VesselManuscript\\TOL-daily\\")
 DC = Sys.Date()
 
 
 #some analysis and output flags #### 
-flagCSV  = FALSE   #true if you want to output hourly and daily csv files per site
+flagCSV  = TRUE   #true if you want to output hourly and daily csv files per site
 flagPLT  = FALSE   #true if you want to output summary plots of data
 flagYear = TRUE   #true writes out a csv of yearly data to be copied into google docs
 

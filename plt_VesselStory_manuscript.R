@@ -26,7 +26,8 @@ blank_theme <- theme_minimal()+
 
 
 #read in files ####
-wd = "F:\\RESEARCH\\SanctSound\\data2\\combineFiles_VesselManuscript\\"  # Summary2019Month_ver2022-01-21.csv
+# WHERE ARE THIS FILES ... moved to gdrive to be able to work with duh!
+wd = "G:\\My Drive\\ActiveProjects\\SANCTSOUND\\combineFiles_VesselManuscript\\" # "F:\\SanctSound\\data2\\combineFiles\\"  # Summary2019Month_ver2022-01-21.csv
 setwd(wd)
 infile = paste0(wd,"SummaryMTH_2019_ver2022-12-17.csv") #choose.files() #output from 1b_process_VesselDetectionsAIS.R paste0(wd,"Summary 2019Month_ver2022-01-21.csv")
 output4 = read.csv(infile)
@@ -35,7 +36,7 @@ as.data.frame(colnames(output4))
 orgData = output4
 
 #all site lat/longs
-siteLoc = read.csv("F:\\RESEARCH\\SanctSound\\data\\SiteLocations.csv")
+siteLoc = read.csv("F:\\SanctSound\\data\\SiteLocations.csv") # F:\SanctSound\data
 siteLoc = siteLoc[,1:3]
 
 #2020 data for comparison
@@ -313,8 +314,8 @@ inFiles = list.files (path = wd, pattern = "HR")
 inSites = sapply(strsplit(inFiles,"_"), `[`, 1)
 inFilesF= list.files (path = wd, pattern = "HR", full.names = T)
 #three sites in the HH category... 
-keepSites = c("SB03", "CI05", "FK03")
-keepMth   = c("3","5","1")
+keepSites = c("SB03", "CI05", "FK03","MB02")
+keepMth   = c("3","5","1","4")
   
 HRsumALL = NULL
 HRvdALL = NULL
@@ -396,6 +397,7 @@ ggplot(data=iData, aes( x = (Hour), y = mean) ) +
   theme( legend.position = "none", axis.text.y = element_text(size = 12, colour="black"),
          axis.text.x=element_text(size = 12,colour="black"))
 
+## OLD CODE!
 #plot of quiet by hour of the day for a given site
 PHH1 = ggplot(data=iData[iData$site == "SB03",], aes( x = (Hour), y = mean) ) +
   geom_bar(stat="identity", color="light gray", position=position_dodge(), width=0.65, size=0.3)+
