@@ -2,6 +2,9 @@
 
 rm(list=ls())
 
+library(dplyr)
+library(lubridate)
+
 sOI = c("SB03", "OC02")
 
 # AIS transits ####
@@ -45,3 +48,19 @@ as.data.frame( AIStranSB[ AIStranSB$avg_sog_dw <=10,] %>% group_by(Yr_Mth) %>% t
 
 # AIS 10 km summaries ####
 # F:\\SanctSound\\data\\AIS_By_Region # AIS_CI_2018_10_to_2021_04.csv
+ss = 2
+AISsum = read.csv(paste0("F:\\SanctSound\\data\\AIS_By_Region\\AIS_", substr( sOI[ss],1,2) , "_2018_10_to_2021_04.csv")  )
+AISsum = AISsum[ AISsum$LOC_ID == sOI[ss],]
+
+AISsum$DATE = as.Date( AISsum$DATE, format = "%m/%d/%Y") 
+AISsum$Year = year(AISsum$DATE )
+AISsum$Mth = month(AISsum$DATE )
+AISsum$Yr_Mth = paste(AISsum$Year , AISsum$Mth, sep = "_" )
+
+head(AISsum)
+# get monthly summaries of unique vessels in each size class- S, M, L NA
+AISsumt = AISsum[,c(13, 3,5,7,9)]
+head(AISsumt)
+AISsumUV = as.data.frame ( AISsumt %>% group_by(Yr_Mth) %>% summarise(across(everything(), list(sum))) )
+AISsumUV$Total = rowSums(AISsumUV[,2:5])
+AISsumUV
