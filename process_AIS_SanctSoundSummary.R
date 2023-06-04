@@ -9,7 +9,7 @@ sOI = c("SB03", "OC02")
 
 # AIS transits ####
 # F:\\SanctSound\\data\\AIS_transits #smp_transit_data.csv 
-AIStran = read.csv("F:\\SanctSound\\data\\AIS_transits\\smp_transit_data.csv") 
+AIStran = read.csv("F:\\SanctSound\\analysis\\AIS\\AIS_transits\\smp_transit_data_updateFormat.csv") 
 AIStran$Start = as.POSIXct( gsub("[+]00", "", AIStran$start_time_utc), tz = "GMT" ) 
 AIStran$End   = as.POSIXct( gsub("[+]00", "", AIStran$end_time_utc), tz = "GMT" ) 
 AIStran$Year = year(AIStran$Start )
@@ -49,7 +49,11 @@ as.data.frame( AIStranSB[ AIStranSB$avg_sog_dw <=10,] %>% group_by(Yr_Mth) %>% t
 # AIS 10 km summaries ####
 # F:\\SanctSound\\data\\AIS_By_Region # AIS_CI_2018_10_to_2021_04.csv
 ss = 2
-AISsum = read.csv(paste0("F:\\SanctSound\\data\\AIS_By_Region\\AIS_", substr( sOI[ss],1,2) , "_2018_10_to_2021_04.csv")  )
+tDir = "F:\\SanctSound\\analysis\\AIS\\AIS_By_Region\\"
+inFiles = ( list.files(path=tDir, pattern = substr( sOI[ss],1,2) , full.names=TRUE, recursive = TRUE) )
+
+AISsum = read.csv(inFiles[4]  )
+
 AISsum = AISsum[ AISsum$LOC_ID == sOI[ss],]
 
 AISsum$DATE = as.Date( AISsum$DATE, format = "%m/%d/%Y") 
@@ -63,4 +67,6 @@ AISsumt = AISsum[,c(13, 3,5,7,9)]
 head(AISsumt)
 AISsumUV = as.data.frame ( AISsumt %>% group_by(Yr_Mth) %>% summarise(across(everything(), list(sum))) )
 AISsumUV$Total = rowSums(AISsumUV[,2:5])
+AISsumUV$perLarge = (AISsumUV$LOA_L_UV_1/AISsumUV$Total) *100
 AISsumUV
+#copied to https://docs.google.com/spreadsheets/d/10SviwvcmT3XlaYuDfpQRLVs9heEVo0EsUSqp-hpbocY/edit#gid=583051745
