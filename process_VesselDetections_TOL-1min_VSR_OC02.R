@@ -1,4 +1,4 @@
-# process sanctuary sound vessel detection data and AIS results
+# process SanctSound vessel detection data and AIS results
 
 # modified 1b-- wanted sound levels only during vessel detections "noise added" 
 # modified with new directory structure- site_dep
@@ -20,6 +20,7 @@ library(scales)
 library(BBmisc)
 library(zoo)
 library(stringr)
+library(plyr)
 
 # SETUP directories ####
 site = "OC02"
@@ -38,7 +39,11 @@ slowdown = as.data.frame ( rbind( c("2020", ("2020-06-01"), ("2020-10-31"),"out"
 colnames(slowdown) = c("Yr", "StartDate","EndDate","lanes")
 slowdown$StartDate = as.Date( slowdown$StartDate)
 slowdown$EndDate  = as.Date( slowdown$EndDate)
-
+frqs = c("DateF", "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100", "TOL_125", "TOL_160", "TOL_200", "TOL_250", "TOL_315", "TOL_400", "TOL_500", "TOL_630", "TOL_800", 
+         "TOL_1000", "TOL_1250", "TOL_1600", "TOL_2000", "TOL_2500", "TOL_3150", "TOL_4000", "TOL_5000", "TOL_6300", "TOL_8000", "TOL_10000", "TOL_12500", "TOL_16000", "TOL_20000")
+fQI = c( "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100", "TOL_125", "TOL_160", "TOL_200", "TOL_250", "TOL_315", "TOL_400", "TOL_500", "TOL_630", "TOL_800", 
+         "TOL_1000", "TOL_1250", "TOL_1600", "TOL_2000", "TOL_2500", "TOL_3150", "TOL_4000", "TOL_5000", "TOL_6300", "TOL_8000", "TOL_10000", "TOL_12500", "TOL_16000", "TOL_20000")
+FQsave = "TOL_125"
 # VESSEL DETECTION DATA ####
 nFilesVD   = length( list.files(path=tDir, pattern = "*hips.csv", full.names=TRUE, recursive = TRUE))
 inFilesVDF = ( list.files(path=tDir, pattern = "*hips.csv", full.names=TRUE, recursive = TRUE))
@@ -67,10 +72,40 @@ indx = which(VD$DepC == 1) # find transitions in deployments
 VD$DurH = VD$Dur/3600 
 VD$Label= tolower(VD$Label)  
 VD = VD[VD$Label == "ship", ]
-## VD DURATIONS
+## VD DURATIONS ####
 VDmean = aggregate(VD$DurH,    by=list(VD$Mth, VD$Yr, VD$Sant), mean, na.rm=T) 
 VDsd   = aggregate(VD$DurH,    by=list(VD$Mth, VD$Yr, VD$Sant), sd, na.rm=T) 
 VDagg = cbind(VDmean, VDsd$x)
+## NON-VESSEL PERIODS ####
+VDall = NULL
+for (ii in 1:(nrow(VD) -1 ) )  {
+  
+  if (VD$DepC [ii+1] == 0) {
+    tpL = "ambient"
+    tpS = VD$End [ii] + 1
+    tpE = VD$Start [ii+1] - 1
+    tpD = as.numeric( difftime(tpE, tpS, units = "secs") )
+    
+    #recombine and build new matrix
+    r1 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], as.POSIXct(VD$Start[ii]), as.POSIXct(VD$End[ii]), VD$Label[ii], (VD$Dur[ii]) ) 
+    colnames(r1)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    
+    r2 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], tpS, tpE, tpL, tpD) 
+    colnames(r2)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    
+    VDall =  rbind(VDall , rbind.data.frame(r1,r2) )
+    
+  } else {
+    r1 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], as.POSIXct(VD$Start[ii]), as.POSIXct(VD$End[ii]), VD$Label[ii], (VD$Dur[ii])) 
+    colnames(r1)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    VDall =  rbind(VDall , r1) 
+    
+  }
+  
+}
+VDall$Mth = month(VDall$Start)
+VDall$Yr = year(VDall$Start)
+VDall$Hr = hour(VDall$Start)
 
 # TOL DATA ####
 nFilesPSD   = length( list.files(path=tDir, pattern = "_1min", full.names=TRUE, recursive = TRUE) )
@@ -97,8 +132,10 @@ AIStranOC$End   = as.POSIXct( gsub("[+]00", "", AIStranOC$end_time_utc), tz = "G
 rm(AIStran)
 cat("Range for AIS data: ", as.character( min( AIStranOC$Start ) ), " to ", as.character( max( AIStranOC$Start ) ) )
 
+# TOL PROCESS---------------------------------------------------------------------------------
+# TOL combine ####
 
-# TOL with VD label ####
+## with VD label ####
 TOLmin$VD = 0
 for (ii in 1:nrow(VD) ){
   # find all TOLs rows that fall with the detection period
@@ -107,16 +144,13 @@ for (ii in 1:nrow(VD) ){
   TOLmin$VD[idx] = ii  # label TOL rows with vessel detection number- should not be overlap!
 }
 
-# TOL with AIS transits ####
+## with AIS transits ####
 TOLmin$AIS  = 0
 TOLmin$AISs = 0
 TOLmin$AISm = 0
 TOLmin$AISl = 0
 TOLmin$AISu = 0
 TOLmin$SOG  = 0
- 
-
-# each minute will have number of vessels by size group, speeds-- to get predicted TOL based on speed and vessel count
 for (ii in 1:nrow(AIStranOC) ){ 
   
   # find all TOLs rows that fall with the AIS vessel transit period
@@ -139,21 +173,16 @@ for (ii in 1:nrow(AIStranOC) ){
     }
 }
 
-
-# HOW TO SPEED UP!!
+## with speed label ####
 idx =  ( which( TOLmin$AIS > 0 ) )
 TOLmin$SOG[idx]    = str_replace( TOLmin$SOG[idx] , "0," , "")  #remove the zeros from the list
-
-
 SOGcalc = function(x){ mean( as.numeric( strsplit( x , ",")[[1]] ) ) } # mean( as.numeric( strsplit( TOLmin$SOG [191] ,  ",")[[1]] ) )
 TOLmin$SOGm   = sapply(TOLmin$SOG, SOGcalc)
 idx =  ( which( TOLmin$AIS == 0 ) ) #no AIS data- so make NA
 TOLmin$SOGm[idx] = NA
-
 SOGu10  = function(x){ sum( (as.numeric( strsplit( x , ",")[[1]] ) ) < 11 ) } 
 TOLmin$SOGb10 = sapply(TOLmin$SOG, SOGu10)
 TOLmin$SOGb10[idx] = NA
-
 # update results for missing AIS data, NAs for any dates after 
 TOLmin$Day = as.Date ( TOLmin$DateF )
 idx = TOLmin$Day > as.Date ( max( AIStranOC$End ) )
@@ -167,16 +196,12 @@ TOLmin$SOGm[idx]  = NA
 TOLmin$SOGb10[idx]  = NA
 TOLmin$SOGb10P[!idx] = TOLmin$SOGb10[!idx]/ TOLmin$AIS[!idx] 
 
-
-save(TOLmin,  file = paste0(outDir, "\\outputTOL_" ,site, "_", DC, ".Rda") ) #save bc above takes forever
-
-
+# TOL PLOTS ####
 # summary of minutes in each % of vessels 10 knots or below
-# !!! START HERE how to visualize #### 
-as.data.frame( TOLmin %>% group_by(SOGb10, Yr) %>% tally() )
-
+as.data.frame( TOLmin %>% group_by(Yr, SOGb10) %>% tally() )
 # count of vessels travelling <10 kts-- hard to see how many NOT within each color
 # expect 0 as highest levels (all vessels above 10), NA as lowest (no vessels)
+## count vessels <10 ####
 ggplot(TOLmin, aes(TOL_125, color = as.factor(SOGb10) ) )  +
   stat_ecdf(geom="step", size = 2) +
   facet_wrap(~Yr)+ 
@@ -184,9 +209,9 @@ ggplot(TOLmin, aes(TOL_125, color = as.factor(SOGb10) ) )  +
   ylab("f(sound level)") +  xlab(paste0("Low-frequency sound levels  (125 Hz third-octave band)") ) +
   theme_minimal()
 
-# % of vessels travelling <10 kts-- hard to see how many total
-library(plyr)
+## % of vessels <10 kts ####
 TOLmin$SOGb10Pr = (round_any( TOLmin$SOGb10P*100, 10) ) 
+as.data.frame( TOLmin %>% group_by(Yr,SOGb10Pr) %>% tally() )
 # expect 0 as highest levels (all vessels above 10), NA as lowest (no vessels), 100 lowest
 ggplot(TOLmin, aes(TOL_125, color = as.factor(SOGb10Pr) ) )  +
   stat_ecdf(geom="step", size = 2) +
@@ -194,74 +219,144 @@ ggplot(TOLmin, aes(TOL_125, color = as.factor(SOGb10Pr) ) )  +
   scale_colour_discrete(name="% Vessels < 10 kts")+
   ylab("f(sound level)") +  xlab(paste0("Low-frequency sound levels  (125 Hz third-octave band)") ) +
   theme_minimal()
-
 TOLmin %>% group_by(AIS) %>%  summarise(quantile = scales::percent(c(0.25, 0.5, 0.75)),  X125 = quantile(TOL_125, c(0.25, 0.5, 0.75)))
 
-
-## LABELS ####
-# Category of vessel presence ####
+# TOL LABELS ####
+## Category of vessel presence ####
 TOLmin$mth = month(TOLmin$DateF)
 TOLmin$Category[TOLmin$AIS > 0  & TOLmin$VD > 0 ] =    "A. Vessel- AIS nearby" 
 TOLmin$Category[TOLmin$AIS == 0 & TOLmin$VD > 0 ] =    "B. Vessel- unk"
 TOLmin$Category[TOLmin$AIS == 0 & TOLmin$VD == 0] =    "D. No Vessel"
 TOLmin$Category[TOLmin$AIS > 0  & TOLmin$VD == 0] =    "C. No Vessel- AIS nearby"
 TOLmin$Category[ is.na( TOLmin$AIS) ] =    "E. No AIS data"
-# unique(TOLmin$Category )
-
-# Vessel Detection Label ####
+## Vessel Detection Label ####
 TOLmin$Label[TOLmin$VD > 0 ] =    "A. Vessel Detection" 
 TOLmin$Label[TOLmin$VD == 0 ] =   "B. No Vessel Detection"
 unique(TOLmin$Label )
+TOLminJul = TOLmin[TOLmin$mth == 7,]
+# boxplot of 125 by VD label 
+ggplot(TOLminJul, aes( y=TOL_125, color=(Label))  )+
+  geom_boxplot()+
+  ggtitle (paste0("July: variation in sound level- ", TOLmin$Sant ) )+
+  theme_minimal()+
+  facet_wrap(~Yr)
 
-# Slowdown periods ####
+## Slowdown periods ####
 TOLmin$Slowdown = 0
 idx = NULL
-for (ss in 1:nrow(slowdown) ){
+for (ss in 1: nrow(slowdown) ){
   tmp = which(TOLmin$Day >= slowdown$StartDate[ss] & TOLmin$Day <= slowdown$EndDate [ss]) 
   idx = c(idx, tmp)
 }
 TOLmin$Slowdown [idx] = 1 
-
-
-# SUMMARIES ####
-aggregate(TOLmin$TOL_125, by=list(TOLmin$Slowdown,TOLmin$mth, TOLmin$Yr), mean, na.rm=T)
-as.data.frame( TOLmin %>% group_by(Slowdown, mth) %>% tally() )
-
-
-
-# SAVE OUT ####
-save(TOLmin,  file = paste0(outDir, "\\outputTOL_" ,site, "_", DC, ".Rda") )
-
-# !!!! VDs with TOL metrics #### 
-
-
-
-# PLOTS ####
-as.data.frame(colnames(TOLmin))
 TOLminJul = TOLmin[TOLmin$mth == 7,]
-
-# boxplot of 125 by label--- do 
-ggplot(TOLminJul, aes( y=TOL_125, color=(Label))  )+
+ggplot(TOLminJul, aes( y=TOL_125, color=(Slowdown))  )+
   geom_boxplot()+
-  ggtitle (paste0("Variation in sound level- ", TOLmin$Sant ) )+
+  ggtitle (paste0("July: variation in sound level- ", TOLmin$Sant ) )+
   theme_minimal()+
   facet_wrap(~Yr)
 
-# Noise Exceedence for July--- this needs VD detections!!!
+# TOL SAVE OUT ####
+save(TOLmin,  file = paste0(outDir, "\\outputTOL_" ,site, "_", DC, ".Rda") ) #save bc above takes forever
+# load( "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction\\outputTOL_OC02_2023-06-02.Rda")
 
-# ECDF for slowdown periods
+# TOL SUMMARIES ####
+aggregate(TOLmin$TOL_125, by=list(TOLmin$Slowdown,TOLmin$mth, TOLmin$Yr), mean, na.rm=T)
+as.data.frame( TOLmin %>% group_by(Slowdown, mth) %>% tally() )
 
-TOLmin2 = TOL_SB03[1:400,] #only plot first month
-p = ggplot(TOLmin2, aes(x=DateF, y=Label, fill=(TOL_125)) ) +
-  geom_tile() +
-  scale_fill_distiller(palette = "YlGnBu") +
-  theme_bw() + 
-  ggtitle("Vessel Detection Label")+
+# VESSEL DETECTIONS PROCESS---------------------------------------------------------------------------------
+# VD combine #### 
+## add NON-VESSEL PERIODS ####
+VDall = NULL
+for (ii in 1:(nrow(VD) -1 ) )  {
+  
+  if (VD$DepC [ii+1] == 0) {
+    tpL = "ambient"
+    tpS = VD$End [ii] + 1
+    tpE = VD$Start [ii+1] - 1
+    tpD = as.numeric( difftime(tpE, tpS, units = "secs") )
+    
+    #recombine and build new matrix
+    r1 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], as.POSIXct(VD$Start[ii]), as.POSIXct(VD$End[ii]), VD$Label[ii], (VD$Dur[ii]) ) 
+    colnames(r1)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    
+    r2 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], tpS, tpE, tpL, tpD) 
+    colnames(r2)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    
+    VDall =  rbind(VDall , rbind.data.frame(r1,r2) )
+    
+  } else {
+    r1 =  cbind.data.frame( VD$Sant[ii], VD$Dep[ii], as.POSIXct(VD$Start[ii]), as.POSIXct(VD$End[ii]), VD$Label[ii], (VD$Dur[ii])) 
+    colnames(r1)= c("Sanctuary", "Deployment", "Start", "End","Label", "DurS")
+    VDall =  rbind(VDall , r1) 
+    
+  }
+  
+}
+VDall$Mth = month(VDall$Start)
+VDall$Yr = year(VDall$Start)
+VDall$Hr = hour(VDall$Start)
+## with TOLs  ####
+outputVD = NULL
+for (ii in 1:nrow(VDall) ){ # takes way too long!! not sure how to speed up?
+  
+  #get all TOLs for the duration of the detection period
+  tmp = TOLmin[ TOLmin$DateF >= VDall$Start [ii] & TOLmin$DateF <= VDall$End [ii] ,]
+  
+  if ( nrow(tmp) > 0) {
+    tmpMax   = apply(tmp[,fQI],2,max) 
+    tmpQuant = as.data.frame( apply(tmp[,fQI],2, quantile) )
+    tmpMed   = tmpQuant[3,]
+    
+    tmpo = cbind(tmpMax[FQsave], tmpMed[FQsave])
+    colnames(tmpo) = c("TOL_125 max", "TOL_125 median")
+    tmpo = cbind(VDall[ii,], tmpo)
+    outputVD = rbind(outputVD,tmpo)
+    
+  } else  { # not sound levels- which would be weird!
+    tmpo = cbind( NA,NA)
+    colnames(tmpo) = c("TOL_125 max", "TOL_125 median")
+    tmpo = cbind(VDall[ii,], tmpo)
+    outputVD = rbind(outputVD, tmpo)
+  } 
+  
+}
+
+## with AIS ####
+outputVD$AIS = 0
+outputVD$mDist = NA
+for (ii in 1:nrow(outputVD) ){
+  #just getting if an AIS vessel start of transit occurred in this vessel detection period
+  tmp = AIStranOC[AIStranOC$Start >= outputVD$Start[ii] & AIStranOC$Start <= outputVD$End[ii], ] 
+  tmp = tmp[ tmp$loc_id ==outputVD$Sanctuary[ii], ] # only matching site
+  
+  if (  nrow(tmp) > 0 ){
+    
+    outputVD$AIS[ii]   = nrow(tmp)
+    outputVD$mDist[ii] = min(tmp$dist_nm, na.rm = T)
+  }
+}
+
+# VD LABEL ####
+outputVD$Category[outputVD$AIS > 0  & outputVD$Label == "ship"] = "A. AIS vessels" # AIS VESSEL PRESENT and VD
+outputVD$Category[outputVD$AIS == 0 & outputVD$Label == "ship"] = "B. Non-AIS vessels"
+outputVD$Category[outputVD$AIS == 0 & outputVD$Label == "ambient"] = "C. Non-vessel"
+outputVD$Category[outputVD$AIS > 0  & outputVD$Label == "ambient"] =  "D. Nearby AIS"
+# aggregate(outputVD$`TOL_125 max`, by=list(outputVD$Category), mean, na.rm=T)
+tal = as.data.frame( outputVD %>% group_by(Category) %>% tally() )
+
+# VD PLOTs  ####
+# TIME LINE OF VD CONDITIONS
+ggplot(outputVD, aes(x=Start, xend=End, y=Category, yend=Category, color=`TOL_125 max`)) +
+  geom_segment()+
+  theme_bw()+ 
   scale_y_discrete(limits=rev)+ 
-  xlab("")+  ylab("")+ 
-  scale_color_gradientn(colours = viridis(20))+
+  geom_segment(size=12) +
+  xlab("")+  ylab("")+ ggtitle("Summary of Vessel Detection Periods") +
+  labs(caption = (paste0("samples in each category: A=", tal$n[1]," | B=", tal$n[2]," | C=", tal$n[3]," | D=", tal$n[4] )))+
+  scale_color_gradientn(colours = viridis(10))+
   theme(  axis.text.y = element_text(size = 14, colour="black"),
           axis.text.x=element_text(size = 14, colour="black"),
           plot.caption = element_text(size = 14) )
-ggplotly(p) 
-
+# VD SAVE out ####
+save(outputVD,  file=paste0(outDir, "\\outputVD_", site , "_", DC, ".Rda") )
