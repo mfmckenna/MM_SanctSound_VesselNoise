@@ -26,8 +26,8 @@ blank_theme <- theme_minimal()+
 
 
 #read in files ####
-# WHERE ARE THIS FILES ... moved to gdrive to be able to work with duh!
-wd = "G:\\My Drive\\ActiveProjects\\SANCTSOUND\\combineFiles_VesselManuscript\\" # "F:\\SanctSound\\data2\\combineFiles\\"  # Summary2019Month_ver2022-01-21.csv
+# WHERE ARE THIS FILES ... saved in SanctSound folder on hardrive (copied to local drive)
+wd = "C:\\Users\\megan\\Documents\\combineFiles_VesselManuscript\\" # "F:\\SanctSound\\data2\\combineFiles\\"  # Summary2019Month_ver2022-01-21.csv
 setwd(wd)
 infile = paste0(wd,"SummaryMTH_2019_ver2022-12-17.csv") #choose.files() #output from 1b_process_VesselDetectionsAIS.R paste0(wd,"Summary 2019Month_ver2022-01-21.csv")
 output4 = read.csv(infile)
@@ -187,8 +187,21 @@ idx = which(colnames(outputKeep)== "LOA_PropL" )
 colnames(outputKeep)[idx] = "AIS traffic >100 m"
 as.data.frame(colnames (outputKeep) )
 
+# ? add eror bars to the metrics
+#x- noise added is just the difference in monthly no vs yes median value (no variation)
+outputKeep$NVess125_sd
+outputKeep$YVess125_sd
+# difference between SD.... difference in montly SD at 125- what does this even mean!?
+# could calculate daily noise added and monthly SD
+outputKeep$SD125 = abs( outputKeep$YVess125_sd - outputKeep$NVess125_sd)
+#y- is this the average prop for each day?
+# could calculate daily prop hours with Vess and monthly SD
+outputKeep$PrpHRSVESS
+
 ggplot(outputKeep, aes(y = PrpHRSVESS*100, x = NoiseAdd, color = ShipLane, label= Site) ) +
   geom_point(aes(size = PropL) ) +
+  #geom_errorbarh (aes(xmin=NoiseAdd- SD125, 
+                      #xmax=NoiseAdd+ SD125),  colour="gray") +
   scale_size(range = c(.3, 10), name="Proportion of Traffic large (>100m)") +
   scale_color_manual(values=c("#999999", "#E69F00") ) +
   ylim(c(0,100)) +
