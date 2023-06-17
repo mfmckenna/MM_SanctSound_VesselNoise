@@ -27,7 +27,7 @@ blank_theme <- theme_minimal()+
 
 #read in files ####
 # WHERE ARE THIS FILES ... saved in SanctSound folder on hardrive (copied to local drive)
-wd = "C:\\Users\\megan\\Documents\\combineFiles_VesselManuscript\\" # "F:\\SanctSound\\data2\\combineFiles\\"  # Summary2019Month_ver2022-01-21.csv
+wd = "F:\\SanctSound\\analysis\\combineFiles_VesselManuscript\\" # "F:\\SanctSound\\data2\\combineFiles\\"  # Summary2019Month_ver2022-01-21.csv
 setwd(wd)
 infile = paste0(wd,"SummaryMTH_2019_ver2022-12-17.csv") #choose.files() #output from 1b_process_VesselDetectionsAIS.R paste0(wd,"Summary 2019Month_ver2022-01-21.csv")
 output4 = read.csv(infile)
@@ -36,7 +36,7 @@ as.data.frame(colnames(output4))
 orgData = output4
 
 #all site lat/longs
-siteLoc = read.csv("F:\\SanctSound\\data\\SiteLocations.csv") # F:\SanctSound\data
+siteLoc = read.csv("F:\\SanctSound\\analysis\\SiteLocations.csv") # F:\SanctSound\data
 siteLoc = siteLoc[,1:3]
 
 #2020 data for comparison
@@ -79,7 +79,7 @@ keep = as.data.frame ( rbind(
   c("OC04",08,"N"), c("OC03",11,"N"), c("OC02",03,"Y"), c("OC01",11,"N"),
   c("MB03",03,"Y"), c("MB02",03,"N"), c("MB01",03,"N"),
   c("GR03",5,"N"), c("GR02",5,"N"), c("GR01",5,"N"),
-  c("FK04",3,"N") , c("FK03",1,"N"),  c("FK02",1,"N") , c("FK01",1,"N"),
+  c("FK03",1,"N"),  c("FK02",1,"N") , c("FK01",1,"N"), # c("FK04",3,"N") ,
   c("CI05",4,"Y"),  c("CI04",4,"N"),  c("CI03",11,"N"), c("CI02",6,"N"),   c("CI01",4,"N")) )
 
 colnames(keep) = c("Site","Mth","ShipLane") 
@@ -89,12 +89,60 @@ keep$ShipLane = as.character(keep$ShipLane)
 
 outputKeep = NULL
 for (kk in 1:nrow(keep)){
-  tmp = output4[ output4$Site == keep[kk,1] & output4$Mth == keep[kk,2],] 
+  tmp = output4[ output4$Site == keep[kk,1] & output4$Mth == keep[kk,2], ] 
+  tmp = tmp[ !is.na(tmp$X), ] 
+  
   tmp$ShipLane = keep[kk,3]
-  outputKeep = rbind(outputKeep,tmp)
+  outputKeep = rbind(outputKeep, tmp)
+  rm(tmp)
 }
 colnames(outputKeep) = (c(colnames(output4),"ShipLane") )
 outputKeep$Site = as.character(outputKeep$Site ) 
+outputKeep$Site
+# FIGURE 2: EC vs DM ####
+# now figure 2
+## Multiple metrics all sites-  bubble chart (Figure 4)
+#order site by percent of day
+tmp = outputKeep %>% arrange(PrpHRSVESS) #PropVessel_daily_mean
+outputKeep$Site = factor(outputKeep$Site, levels = tmp$Site, ordered=T)
+outputKeep$PropL = (outputKeep$LOA_L_UV_sum/ (outputKeep$LOA_S_UV_sum +outputKeep$LOA_M_UV_sum +outputKeep$LOA_L_UV_sum))*100
+idx = which(colnames(outputKeep)== "LOA_PropL" )
+colnames(outputKeep)[idx] = "AIS traffic >100 m"
+as.data.frame(colnames (outputKeep) )
+
+# ? add eror bars to the metrics
+#x- noise added is just the difference in monthly no vs yes median value (no variation)
+outputKeep$NVess125_sd
+outputKeep$YVess125_sd
+# difference between SD.... difference in montly SD at 125- what does this even mean!?
+# could calculate daily noise added and monthly SD
+outputKeep$SD125 = abs( outputKeep$YVess125_sd - outputKeep$NVess125_sd)
+#y- is this the average prop for each day?
+# could calculate daily prop hours with Vess and monthly SD
+outputKeep$PrpHRSVESS
+
+outputKeep$Site
+ggplot(outputKeep, aes(y = PrpHRSVESS*100, x = NoiseAdd, color = ShipLane, label= Site) ) +
+  geom_point(aes(size = PropL) ) +
+  #geom_errorbarh (aes(xmin=NoiseAdd- SD125, 
+  #xmax=NoiseAdd+ SD125),  colour="gray") +
+  scale_size(range = c(.3, 10), name="Proportion of Traffic large (>100m)") +
+  scale_color_manual(values=c("#999999", "#E69F00") ) +
+  ylim(c(0,100)) +
+  ylab("") + #ylab("Percent of Hours Vessel Noise Dominant") +
+  xlab("") +#xlab("Low-Frequency Vessel Noise Exceedence (decibels) when Vessels Detected (125 Hz third-octave band)") +
+  labs(title = "", 
+       subtitle = "",
+       caption = "")+
+  #geom_vline(xintercept = 1)+
+  geom_text(aes(label=Site), hjust=0, vjust=-3, size = 3)+
+  theme_minimal(base_size = 18) +
+  theme( plot.title=element_text(size=18, face="bold"), 
+         legend.position = "none",
+         plot.subtitle  = element_text(color = "dark gray", size = 10, face = "italic"),
+         plot.caption   = element_text(color = "dark gray",  size = 10, face = "italic") )
+#copied to illustrator to edit legend etc
+
 
 # FIGURE 1 ####
 ## AIS traffic size categories- (Figure 2- map pies)
@@ -176,48 +224,7 @@ ggplot(outputKeep, aes(y = TotalVesselDet_cnt_mean, x = LOA_ALL_UV_mean) ) +
   theme( plot.title=element_text(size=18, face="bold"), 
          legend.position = "bottom")
 
-# FIGURE 2: EC vs DM ####
-#now figure 2
-## Multiple metrics all sites-  bubble chart (Figure 4)
-#order site by percent of day
-tmp = outputKeep %>% arrange(PrpHRSVESS) #PropVessel_daily_mean
-outputKeep$Site = factor(outputKeep$Site, levels = tmp$Site, ordered=T)
-outputKeep$PropL = (outputKeep$LOA_L_UV_sum/ (outputKeep$LOA_S_UV_sum +outputKeep$LOA_M_UV_sum +outputKeep$LOA_L_UV_sum))*100
-idx = which(colnames(outputKeep)== "LOA_PropL" )
-colnames(outputKeep)[idx] = "AIS traffic >100 m"
-as.data.frame(colnames (outputKeep) )
 
-# ? add eror bars to the metrics
-#x- noise added is just the difference in monthly no vs yes median value (no variation)
-outputKeep$NVess125_sd
-outputKeep$YVess125_sd
-# difference between SD.... difference in montly SD at 125- what does this even mean!?
-# could calculate daily noise added and monthly SD
-outputKeep$SD125 = abs( outputKeep$YVess125_sd - outputKeep$NVess125_sd)
-#y- is this the average prop for each day?
-# could calculate daily prop hours with Vess and monthly SD
-outputKeep$PrpHRSVESS
-
-ggplot(outputKeep, aes(y = PrpHRSVESS*100, x = NoiseAdd, color = ShipLane, label= Site) ) +
-  geom_point(aes(size = PropL) ) +
-  #geom_errorbarh (aes(xmin=NoiseAdd- SD125, 
-                      #xmax=NoiseAdd+ SD125),  colour="gray") +
-  scale_size(range = c(.3, 10), name="Proportion of Traffic large (>100m)") +
-  scale_color_manual(values=c("#999999", "#E69F00") ) +
-  ylim(c(0,100)) +
-  ylab("") + #ylab("Percent of Hours Vessel Noise Dominant") +
-  xlab("") +#xlab("Low-Frequency Vessel Noise Exceedence (decibels) when Vessels Detected (125 Hz third-octave band)") +
-  labs(title = "", 
-       subtitle = "",
-       caption = "")+
-  #geom_vline(xintercept = 1)+
-  geom_text(aes(label=Site), hjust=1, vjust=0, size = 3)+
-  theme_minimal(base_size = 18) +
-  theme( plot.title=element_text(size=18, face="bold"), 
-         legend.position = "none",
-         plot.subtitle  = element_text(color = "dark gray", size = 10, face = "italic"),
-         plot.caption  = element_text(color = "dark gray",  size = 10, face = "italic") )
-#copied to illustrator to edit legend etc
 
 # FIGURE 4: GR and SB  (updated with 1-min code) ####
 ## Category through the season... GR01, SB02 
