@@ -99,6 +99,7 @@ for (kk in 1:nrow(keep)){
 colnames(outputKeep) = (c(colnames(output4),"ShipLane") )
 outputKeep$Site = as.character(outputKeep$Site ) 
 outputKeep$Site
+
 # FIGURE 2: EC vs DM ####
 # now figure 2
 ## Multiple metrics all sites-  bubble chart (Figure 4)
@@ -110,7 +111,7 @@ idx = which(colnames(outputKeep)== "LOA_PropL" )
 colnames(outputKeep)[idx] = "AIS traffic >100 m"
 as.data.frame(colnames (outputKeep) )
 
-# ? add eror bars to the metrics
+# ? add error bars to the metrics
 #x- noise added is just the difference in monthly no vs yes median value (no variation)
 outputKeep$NVess125_sd
 outputKeep$YVess125_sd
@@ -339,6 +340,7 @@ keepMth   = c("3","5","1","4")
   
 HRsumALL = NULL
 HRvdALL = NULL
+
 for (ss in 1: length(unique(keepSites) ) ) {
   
   #get hourly data for the site...
@@ -386,6 +388,7 @@ for (ss in 1: length(unique(keepSites) ) ) {
   }
   colnames( HRvd ) = c("site","Month", "Hour","mean", "sd", "se")
   HRvdALL = rbind( HRvdALL,HRvd )
+  
 }
 
 

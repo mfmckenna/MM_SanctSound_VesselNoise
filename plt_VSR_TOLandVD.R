@@ -1,32 +1,30 @@
+# analysis and plots for evaluating vRS 
+
+# input: F:/CODE/GitHub/MM_SanctSound_VesselNoise/process_VesselDetections_TOL-1min_VSR_OC02.R
 
 rm(list=ls())
 
-# PLOTS 
 library(ggplot2)
 library(plyr)
 library(dplyr)
 library(plotrix)
 library(viridis)
-
 range01 = function(x){(x-min(x))/(max(x)-min(x))}
 
-
-inDir = "F:\\SanctSound\\analysis\\combineFiles_VesselManuscript"
+# input DIRECTORIES ####
+inDir = "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction"
+site = "OC02"
 
 # LOAD RESULTS by Site and combine by sites ####
-inFilesTOL = list.files(inDir,pattern = "outputTOL",full.names = T)
-load(inFilesTOL[2])
-TOL_SB03 = outputTOL[,5:ncol(outputTOL)]
-load(inFilesTOL[1])
-TOL_GR01 = outputTOL[,2:ncol(outputTOL)]
-outputTOL = as.data.frame ( rbind(TOL_SB03, TOL_GR01) )
+inFilesTOL = list.files(inDir, pattern = "outputTOL",  full.names = T)
+inFilesTOL = inFilesTOL[grepl( site, inFilesTOL)]
+load(inFilesTOL) # TOLmin
+outputTOL  = TOLmin
+rm(TOLmin)
 
 inFilesVD = list.files(inDir,pattern = "outputVD",full.names = T)
-load(inFilesVD[2])
-VD_SB03 =outputVD
-load(inFilesVD[1])
-VD_GR01 = outputVD
-outputVD = as.data.frame( rbind(VD_SB03, VD_GR01) )
+inFilesVD = inFilesVD[grepl( site, inFilesVD)]
+load(inFilesVD) # outputVD
 
 # SUMMARY PLOTS ####
 ggplot(outputVD, aes( y=`TOL_125 max`, color=(Category))  )+
