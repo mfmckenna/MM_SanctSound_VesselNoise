@@ -126,7 +126,7 @@ for (ss in 1:length(sitesVD)  ) {
   #---------------------------------------------------------------------------------------
   #dirSPL  = list.dirs( path = dDir, pattern = deply )
   
-  inFiles = inFiles[ grepl(deply, inFiles)]
+     inFiles = inFiles[ grepl(deply, inFiles)]
   infiles = inFiles[ !grepl("analysis", inFiles)]
   nFiles = length( infiles )
   

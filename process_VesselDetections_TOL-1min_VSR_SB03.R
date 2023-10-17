@@ -40,15 +40,20 @@ frqs = c("DateF", "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100",
 fQI = c( "TOL_31.5", "TOL_40", "TOL_50", "TOL_63", "TOL_80", "TOL_100", "TOL_125", "TOL_160", "TOL_200", "TOL_250", "TOL_315", "TOL_400", "TOL_500", "TOL_630", "TOL_800", 
          "TOL_1000", "TOL_1250", "TOL_1600", "TOL_2000", "TOL_2500", "TOL_3150", "TOL_4000", "TOL_5000", "TOL_6300", "TOL_8000", "TOL_10000", "TOL_12500", "TOL_16000", "TOL_20000")
 FQsave = "TOL_125"
+
 # range of dates for output graphics
 sDatePlot = '2018-11-01'
 eDatePlot = '2020-12-31'
+
 # some analysis and output flags 
 flagCSV  = TRUE  #true if you want to output hourly and daily csv files per site
 flagPLT  = FALSE  #true if you want to output summary plots of data
 flagYear = TRUE   #true writes out a csv of yearly data to be copied into google docs
-topDir =  "H:\\SanctSound\\data2\\"
-outDir = "G:\\My Drive\\ActiveProjects\\SANCTSOUND\\combineFiles_VesselManuscript"
+
+#topDir =  "H:\\SanctSound\\analysis\\data2\\"
+topDir =  "F:\\SanctSound\\"
+
+outDir = "F:\\SanctSound\\analysis\\combineFiles_VesselManuscript"
 DC = Sys.Date()
 
 yor = "2019"
@@ -59,15 +64,17 @@ for (ss in 1:length(sites)){
   
   site1 = sites[ss] #site1 = "SB03"
   tDir   = paste0(topDir, site1, "\\")
-  #outDir = paste0(topDir, site1, "\\")
   
   # VESSEL DETECTIONS ####
   ## READ IN vessel detection
-  nFilesVD  = length( list.files(path=tDir, pattern = "*hips.csv", full.names=TRUE, recursive = TRUE))
-  inFilesVDF = ( list.files(path=tDir, pattern = "*hips.csv", full.names=TRUE, recursive = TRUE))
+  inFilesVDF  = ( list.files(path=topDir, pattern ="*hips.csv", full.names=TRUE, recursive = TRUE) )
+  inFilesVDF = inFilesVDF[grepl(site1, inFilesVDF)] 
+  inFilesVDF = inFilesVDF[!grepl("analysis", inFilesVDF)] 
   inFilesVD = basename(inFilesVDF)
+  nFilesVD = length(inFilesVD)
   sant = sapply(strsplit(inFilesVD[1], "_"), "[[", 2)
   depl = sapply(strsplit(inFilesVD, "_"), "[[", 3)
+  
   ## FORMATE vessel detection
   VD=NULL
   for (ii in 1:(nFilesVD)) {
@@ -79,6 +86,7 @@ for (ss in 1:length(sites)){
     
     VD = rbind(VD,tmp)
   }
+  
   VD$Start = as.POSIXct( gsub(".000Z", "", gsub("T", " ", VD$ISOStartTime)), tz = "GMT" )
   VD$End   = as.POSIXct( gsub(".000Z", "", gsub("T", " ", VD$ISOEndTime)), tz = "GMT" )
   VD$Mth = month(VD$Start )
@@ -133,6 +141,7 @@ for (ss in 1:length(sites)){
     }
     
   }
+  
   VDall$Mth = month(VDall$Start)
   VDall$Yr = year(VDall$Start)
   VDall$Hr = hour(VDall$Start)
@@ -144,9 +153,12 @@ for (ss in 1:length(sites)){
   
   # TOLs ####
   ## READ IN DATA
-  nFilesPSD   = length( list.files(path=tDir, pattern = "_1min", full.names=TRUE, recursive = TRUE) )
-  inFilesPSDF = list.files(path=tDir, pattern = "mean_1min", full.names=TRUE, recursive = TRUE)
+  inFilesPSDF = list.files(path=topDir, pattern = "mean_1min", full.names=TRUE, recursive = TRUE)
+  inFilesPSDF = inFilesPSDF[grepl(site1, inFilesPSDF)] 
+  inFilesPSDF = inFilesPSDF[grepl("TOL", inFilesPSDF)] 
   inFilesPSD  = basename(inFilesPSDF)
+  nFilesPSD   = length( inFilesPSD )
+  
   ## FORMATE TOL
   TOLmin = NULL
   for (ii in 1:(length(inFilesPSDF)) )  {
@@ -160,10 +172,12 @@ for (ss in 1:length(sites)){
   TOLmin = TOLmin[ TOLmin$yr ==yor,] 
   
   # AIS data ####
-  AIStran = read.csv(paste0(topDir, "SB03\\smp_transit_data.csv")) 
+  AIStran = read.csv( paste0(topDir, "analysis\\AIS\\AIS_transits\\smp_transit_data.csv") ) 
+  
   AIStranOC = AIStran[ AIStran$loc_id == site1,]
   AIStranOC$Start = as.POSIXct( gsub("[+]00", "", AIStranOC$start_time_utc), tz = "GMT" ) 
   AIStranOC$End   = as.POSIXct( gsub("[+]00", "", AIStranOC$end_time_utc), tz = "GMT" ) 
+  #unique( AIStranOC$loc_id)
   
   rm(AIStran,VDagg,VD,VDmean,VDsd)
   
@@ -267,6 +281,9 @@ for (ss in 1:length(sites)){
     if(AIStranOC$loa[ii] >= 50 & AIStranOC$loa[ii] < 100){ TOLmin$AISm[idx] = TOLmin$AISm[idx] + 1  }
     if(AIStranOC$loa[ii] >= 100)                         { TOLmin$AISl[idx] = TOLmin$AISl[idx] + 1  }
     if(is.na(AIStranOC$loa[ii]) )                        { TOLmin$AISu[idx] = TOLminu$AIS[idx] + 1  }
+    
+    # extract speeds of all vessels in that 1-minute period
+    
   }
   ## LABEL ####
   TOLmin$mth = month(TOLmin$DateF)
