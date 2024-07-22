@@ -11,21 +11,25 @@ library(dplyr)
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 #GET DATA ####
+site1 = "OC02"
+siteNot = "SB03"
+
 # HMD+
-inDir = (  "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction" )
+inDir = (  paste0("F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction\\", site1 ))
 outDir = "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction"
 inFiles = list.files( inDir, pattern = "HMDdetLF", full.names = T)
-inFiles = inFiles[grepl("2023-10-15", inFiles)] #remove 1 day files
+inFiles = inFiles[!grepl("SB03", inFiles)] #remove 1 day files
+#inFiles = inFiles[grepl("2023-10-15", inFiles)] #remove 1 day files
 
 pltf = 0
 fqr  = "LF"  #append this to output names
 site = "All"
 DC = Sys.Date()
-site1 = "SB03"
 
 #WIND
 inDirW = (  "F:\\SanctSound\\analysis\\ERDAP_wind" )
 inFilesW = list.files( inDirW, pattern = "env", full.names = T)
+inFilesW = inFilesW[!grepl(siteNot, inFilesW)]
 WINDdata = read.csv(inFilesW)
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
@@ -57,13 +61,7 @@ VSRdata$wind_speed = NA
 VSRdata$sea_water_temperature = NA
 VSRdata$sea_surface_wave_significant_height = NA
 
-for (ww in 1:nrow(WINDdata) ){ # ww = 3000
-  idx = which (VSRdata$dateTime >= WINDdata$dateTime[ww] & VSRdata$dateTime < (WINDdata$dateTime[ww] + (60*60) ) )  
-  VSRdata$wind_speed[idx] =  WINDdata$wind_speed[ww] 
-  VSRdata$sea_water_temperature[idx] =  WINDdata$sea_water_temperature[ww] 
-  VSRdata$sea_surface_wave_significant_height[idx] =  WINDdata$sea_surface_wave_significant_height[ww] 
-}
-
+ 
 save(VSRdata,  file= paste0(outDir, "\\VSRdata_" ,site1, "_", DC, ".Rda") )
 head(VSRdata)
 

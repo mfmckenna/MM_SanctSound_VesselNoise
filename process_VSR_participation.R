@@ -7,13 +7,16 @@ library(dplyr)
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # SET UP PARAMS ####
 DC = Sys.Date()
+SITE = "OC02"
+
 topDir =  "F:\\SanctSound\\"
 inDirW = (  "F:\\SanctSound\\analysis\\ERDAP_wind" ) # WIND data
 inDir = (  "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction" ) # HMD
 outDir = "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction"
 
 inFiles = list.files( inDir, pattern = "VSRdata", full.names = T)
-inFiles = inFiles[grepl("2023-10-15", inFiles)] #remove 1 day files
+inFiles = inFiles[grepl(SITE, inFiles)] #remove 1 day files
+#inFiles = inFiles[grepl("2023-10-15", inFiles)] #remove 1 day files
 load(inFiles)
 head(VSRdata)
 
@@ -80,6 +83,7 @@ unique(VSRdata$Condition)
 idx = which(is.na(VSRdata$AISOsogs_avg) & VSRdata$AISLsogs_avg > 10)
 VSRdata$Condition [idx] = "5. Large >10"
 unique(VSRdata$Condition)
+
 # large > 10
 idx = which(is.na(VSRdata$AISOsogs_avg) & VSRdata$AISLsogs_avg <= 10)
 VSRdata$Condition [idx] = "4. Large <10"
@@ -114,21 +118,34 @@ ggplot(VSRdata, aes(TOL_125_PSD, color = as.factor( Condition ) ) ) +
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # distribution of sound levels during slowdowns
+if (SITE == "OC02") {
+  VSRdata$Slow = "No"
+  VSRdata$Dy = as.Date(VSRdata$dateTime )
+  VSRdata$Slow[ VSRdata$Dy >= as.Date("2020-07-01") & VSRdata$Dy <= as.Date("2020-10-31") ] = "Slowdown"
+  VSRdata$Slow[ VSRdata$Dy >= as.Date("2021-07-01") & VSRdata$Dy <= as.Date("2021-10-31") ] = "Slowdown"
+  VSRdata$Slow[ VSRdata$Dy >= as.Date("2022-07-01") & VSRdata$Dy <= as.Date("2022-10-31") ] = "Slowdown"
+}
+unique(VSRdata$Slow)
+unique(VSRdata$Yr)
+
 tmp = VSRdata[VSRdata$Slow == "Slowdown",]
+unique(tmp$Slow)
+unique(tmp$Yr)
+
 t = tmp%>%
   group_by(Condition, Yr)%>% 
   summarise(count = n(),Mean=mean(TOL_125_PSD), Median=median(TOL_125_PSD), Std=sd(TOL_125_PSD))
+t
 
 tmp = tmp[tmp$Condition != "3. Other >10",]
 tmp = tmp[tmp$Condition != "2. Other <10",]
-
+#head(tmp)
 ggplot(tmp, aes(TOL_125_PSD, color = as.factor( Condition ) ) ) +
   stat_ecdf(geom="step", size = 2) +
   facet_grid(~Yr) +
   theme_bw() +
   scale_color_discrete(name="")
  
-
 p = ggplot(tmp, aes(x = as.factor( Condition ), y = TOL_125_PSD, fill = Condition)) +
   geom_violin() + 
   #geom_jitter(shape=16, alpha = .1, position=position_jitter(0.2))+
@@ -146,10 +163,13 @@ p + theme(axis.title.y = element_blank(),
  #p + stat_summary(fun.data=mean_sdl, mult=1, 
  #                geom="pointrange", color="red")
 
+
+#_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+# incoporating windspeed for the other category
+
+
+
 ### START HERE ####
-
-
-
 library(dplyr)
 tmp%>%
   group_by(Condition, Yr)%>% 

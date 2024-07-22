@@ -13,17 +13,20 @@ library(dplyr)
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # DIRECTORIES ####
+site = "OC02"
 dirTop = "F:\\SanctSound" # ?? create loop through all manta directories ??
 pltf = 0 # change to 1 if you want to plot daily 1-min spectra
-dirOut = "F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction"
-site = "SB03"
+dirOut = paste0("F:\\SanctSound\\analysis\\combineFiles_VesselSpeedReduction\\", site)
+
+#site = "SB03"
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # MANTA HMD DATA ####
 # by deployment
 ver = "manta_9.6.14"
-inSites = c( "SB03_02", "SB03_03", "SB03_04", "SB03_05", "SB03_06", "SB03_07","SB03_08", "SB03_09",
-             "SB03_10", "SB03_11", "SB03_12", "SB03_13", "SB03_14", "SB03_15", "SB03_16", "SB03_17", "SB03_18")
+#inSites = c( "SB03_02", "SB03_03", "SB03_04", "SB03_05", "SB03_06", "SB03_07","SB03_08", "SB03_09",
+#             "SB03_10", "SB03_11", "SB03_12", "SB03_13", "SB03_14", "SB03_15", "SB03_16", "SB03_17", "SB03_18")
+inSites = c( "OC02_01", "OC02_02", "OC02_04", "OC02_06")
 
 # HMD processed for SB03_18-21 but no AIS or detections files
 stFQ = 100
@@ -31,13 +34,22 @@ edFQ = 1997.6
 
 #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # AIS DATA ####
-AIStran = read.csv( paste0(dirTop, "\\analysis\\AIS\\AIS_transits\\smp_transit_data.csv") ) 
-AIStranOC = AIStran[ AIStran$loc_id == site,]
-AIStranOC$Start = as.POSIXct( gsub("[+]00", "", AIStranOC$start_time_utc), tz = "GMT" ) 
-AIStranOC$End   = as.POSIXct( gsub("[+]00", "", AIStranOC$end_time_utc), tz = "GMT" ) 
-rm(AIStran)
+aisf = list.files(path = paste0(dirTop, "\\analysis\\AIS\\AIS_transits"), pattern = "transit", full.names = T,recursive = F)
+AIStranOC = NULL
+for (aa in 1:length(aisf)) {
+  tmp = read.csv(aisf [aa] )
+  tmp = tmp[ tmp$loc_id == site,]
+  tmp$Start = as.POSIXct( gsub("[+]00", "", tmp$start_time_utc), tz = "GMT" ) 
+  tmp$End   = as.POSIXct( gsub("[+]00", "", tmp$end_time_utc), tz = "GMT" ) 
+  AIStranOC = rbind(AIStranOC,tmp)
+}
+idx = which( duplicated(AIStranOC) )
+#AIStranOC$Start[idx]
+#unique(AIStranOC$loc_id )
+#max( AIStranOC$Start )
+#min( AIStranOC$Start )
 
-#_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+  #_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
 # GENERAL INFORMATION ####
 HMDcolnames = NULL
 cnt = 0
@@ -111,8 +123,12 @@ for (s in 1:length(inSites)  ) {  #s = 1
     if (inTmp == "ships" ){
       detTmp = detFiles[grepl(inTmp, detFiles)] 
       tmp = read.csv(detTmp)
+      
       colnames(tmp) = c("ISOStartTime","ISOEndTime","Label" )
+      
+      
       if (tmp$Label[1] != "NoShip") {
+        tmp$Label = gsub("Ship", "ship", tmp$Label)
         tmp$Start = as.POSIXct( gsub(".000Z", "", gsub("T", " ", tmp$ISOStartTime)), tz = "GMT" )
         tmp$End   = as.POSIXct( gsub(".000Z", "", gsub("T", " ", tmp$ISOEndTime)),   tz = "GMT" )
         tmp$Site = st
